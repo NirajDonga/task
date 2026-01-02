@@ -31,7 +31,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.code(401).send({ message: 'Invalid email or password' });
     }
 
-    const token = fastify.jwt.sign({ id: user._id, email: user.email });
+    const token = fastify.jwt.sign({ id: user._id.toString(), email: user.email });
 
     return { token };
   });
