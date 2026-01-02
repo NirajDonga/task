@@ -53,9 +53,13 @@ const worker = new Worker('thumbnail-generation', async (job) => {
     
     console.log(`Job ${jobId} Completed`);
 
+    return { thumbnailUrl: `/uploads/${outputFilename}` };
+
   } catch (error) {
     console.error(`Job ${jobId} Failed:`, error);
     await Job.findByIdAndUpdate(jobId, { status: 'failed' });
+    
+    throw error;
   }
 
 }, { connection });
