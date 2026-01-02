@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/api'; // This import works if lib is at root
+import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100">
-      <Card className="w-[350px]">
+      <Card className="w-87.5">
         <CardHeader>
           <CardTitle className="text-center">{isLogin ? 'Login' : 'Sign Up'}</CardTitle>
         </CardHeader>

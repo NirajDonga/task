@@ -5,15 +5,12 @@ import util from 'util';
 import { pipeline } from 'stream';
 import { Job } from '../models/Job';
 import { thumbnailQueue } from '../queue';
-import { config } from '../config';
 
 const pump = util.promisify(pipeline);
 
 export async function uploadRoutes(fastify: FastifyInstance) {
   
-  const uploadDir = path.isAbsolute(config.uploadsDir)
-    ? config.uploadsDir
-    : path.join(process.cwd(), config.uploadsDir);
+  const uploadDir = path.join(__dirname, '../../uploads');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
@@ -32,7 +29,7 @@ export async function uploadRoutes(fastify: FastifyInstance) {
     await pump(data.file, fs.createWriteStream(savePath));
 
     const userId = request.user.id;
-    
+
     const job = await Job.create({
       userId,
       originalName: data.filename,
@@ -45,6 +42,8 @@ export async function uploadRoutes(fastify: FastifyInstance) {
       jobId: job._id.toString(),
       filePath: savePath,
       mimeType: data.mimetype
+    }, {
+      jobId: job._id.toString() 
     });
 
     return { message: 'File uploaded', jobId: job._id };
