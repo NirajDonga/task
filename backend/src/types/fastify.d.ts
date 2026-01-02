@@ -1,10 +1,11 @@
 import "fastify";
 import type { preValidationHookHandler } from "fastify";
+import { Server } from "socket.io"; // <--- Import Server type
 
-// Add custom decorators/types to Fastify
 declare module "fastify" {
   interface FastifyInstance {
     authenticate: preValidationHookHandler;
+    io: Server; // <--- Manually declare io
   }
 }
 
