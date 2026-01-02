@@ -117,7 +117,6 @@ export default function Dashboard() {
       <Card className="mb-8">
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center">
-            {/* FIX: Add 'multiple' attribute to allow multi-file selection */}
             <Input type="file" onChange={handleUpload} disabled={uploading} multiple />
             <Button disabled={uploading}>
               {uploading ? 'Uploading...' : 'Upload Video/Image'}

@@ -4,9 +4,24 @@ import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
 import ffmpeg from "fluent-ffmpeg";
+import ffmpegPath from "ffmpeg-static"; 
+import { path as ffprobePath } from "ffprobe-static";
+
 import { Job } from './models/Job';
 import mongoose from 'mongoose';
 import { config } from './config';
+
+if (ffmpegPath) {
+  ffmpeg.setFfmpegPath(ffmpegPath as any);
+} else {
+  console.error("Failed to find ffmpeg-static path");
+}
+
+if (ffprobePath) {
+  ffmpeg.setFfprobePath(ffprobePath);
+} else {
+  console.error("Failed to find ffprobe-static path");
+}
 
 const connection = new IORedis({
   host: config.redis.host,
@@ -41,7 +56,7 @@ const worker = new Worker('thumbnail-generation', async (job) => {
 
     if (mimeType.startsWith('image/')) {
       await sharp(filePath)
-        .resize(128, 128) 
+        .resize(128, 128)
         .toFile(outputPath);
     } 
     else if (mimeType.startsWith('video/')) {

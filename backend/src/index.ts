@@ -13,7 +13,13 @@ import { uploadRoutes } from './routes/upload';
 
 const fastify = Fastify({ logger: true });
 
-fastify.register(multipart);
+// FIX: REGISTER MULTIPART WITH LIMITS BEFORE OTHER PLUGINS
+fastify.register(multipart, {
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB limit
+  }
+});
+
 fastify.register(cors, { origin: config.corsOrigin });
 
 fastify.register(jwt, { secret: config.jwtSecret });
