@@ -6,14 +6,17 @@ import sharp from 'sharp';
 import ffmpeg from "fluent-ffmpeg";
 import { Job } from './models/Job';
 import mongoose from 'mongoose';
+import { config } from './config';
 
 const connection = new IORedis({
-  host: 'localhost', 
-  port: 6379,
+  host: config.redis.host,
+  port: config.redis.port,
   maxRetriesPerRequest: null,
 });
 
-mongoose.connect('mongodb://localhost:27017/thumbnail-app');
+mongoose.connect(config.mongoUri)
+  .then(() => console.log('Worker connected to MongoDB'))
+  .catch(err => console.error('Worker DB connection error:', err));
 
 console.log('Worker started, listening for jobs...');
 
@@ -32,6 +35,7 @@ const worker = new Worker('thumbnail-generation', async (job) => {
         .resize(200, 200)
         .toFile(outputPath);
     } 
+ 
     else if (mimeType.startsWith('video/')) {
       await new Promise((resolve, reject) => {
         ffmpeg(filePath)

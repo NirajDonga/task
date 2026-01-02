@@ -6,18 +6,22 @@ import fastifyStatic from '@fastify/static';
 import fastifySocketIO from 'fastify-socket.io';
 import path from 'path';
 import { QueueEvents } from 'bullmq';
+import { config } from './config';
 import { connectDB } from './db';
 import { authRoutes } from './routes/auth';
 import { uploadRoutes } from './routes/upload';
 
 const fastify = Fastify({ logger: true });
 
-fastify.register(cors, { origin: '*' });
 fastify.register(multipart);
-fastify.register(jwt, { secret: 'supersecret-key' });
+fastify.register(cors, { origin: config.corsOrigin });
+
+fastify.register(jwt, { secret: config.jwtSecret });
 
 fastify.register(fastifyStatic, {
-  root: path.join(__dirname, '../../uploads'),
+  root: path.isAbsolute(config.uploadsDir)
+    ? config.uploadsDir
+    : path.join(process.cwd(), config.uploadsDir),
   prefix: '/uploads/',
 });
 
@@ -37,7 +41,10 @@ fastify.register(authRoutes);
 fastify.register(uploadRoutes);
 
 const queueEvents = new QueueEvents('thumbnail-generation', {
-  connection: { host: 'localhost', port: 6379 }
+  connection: { 
+    host: config.redis.host,
+    port: config.redis.port,
+  }
 });
 
 fastify.ready().then(() => {
@@ -57,8 +64,8 @@ fastify.ready().then(() => {
 const start = async () => {
   try {
     await connectDB();
-    await fastify.listen({ port: 3001, host: '0.0.0.0' });
-    console.log('API & Socket running on http://localhost:3001');
+    await fastify.listen({ port: config.port, host: '0.0.0.0' });
+    console.log(`API & Socket running on http://localhost:${config.port}`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

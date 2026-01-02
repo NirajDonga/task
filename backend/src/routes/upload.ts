@@ -5,12 +5,15 @@ import util from 'util';
 import { pipeline } from 'stream';
 import { Job } from '../models/Job';
 import { thumbnailQueue } from '../queue';
+import { config } from '../config';
 
 const pump = util.promisify(pipeline);
 
 export async function uploadRoutes(fastify: FastifyInstance) {
   
-  const uploadDir = path.join(__dirname, '../../uploads');
+  const uploadDir = path.isAbsolute(config.uploadsDir)
+    ? config.uploadsDir
+    : path.join(process.cwd(), config.uploadsDir);
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
