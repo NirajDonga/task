@@ -19,34 +19,53 @@ export async function uploadRoutes(fastify: FastifyInstance) {
     preValidation: [fastify.authenticate] 
   }, async (request, reply) => {
     
-    const data = await request.file();
-    if (!data) {
-      return reply.code(400).send({ message: 'No file uploaded' });
+    const parts = request.parts();
+    
+    const jobsCreated = [];
+    let hasFiles = false;
+
+    for await (const part of parts) {
+      if (part.type === 'file') {
+        hasFiles = true;
+
+        const filename = `${Date.now()}-${Math.round(Math.random() * 1000)}-${part.filename}`;
+        const savePath = path.join(uploadDir, filename);
+  
+        await pump(part.file, fs.createWriteStream(savePath));
+
+        const userId = request.user.id;
+
+        const job = await Job.create({
+          userId,
+          originalName: part.filename,
+          filePath: savePath,
+          mimeType: part.mimetype,
+          status: 'queued'
+        });
+
+        await thumbnailQueue.add('generate-thumbnail', {
+          jobId: job._id.toString(),
+          userId: userId.toString(),
+          filePath: savePath,
+          mimeType: part.mimetype
+        }, {
+          jobId: job._id.toString() 
+        });
+
+        jobsCreated.push({ 
+          jobId: job._id, 
+          originalName: part.filename 
+        });
+      } else {
+        console.log(`Skipping non-file field: ${part.fieldname}`);
+      }
     }
 
-    const filename = `${Date.now()}-${data.filename}`;
-    const savePath = path.join(uploadDir, filename);
-    await pump(data.file, fs.createWriteStream(savePath));
+    if (!hasFiles) {
+      return reply.code(400).send({ message: 'No files uploaded' });
+    }
 
-    const userId = request.user.id;
-
-    const job = await Job.create({
-      userId,
-      originalName: data.filename,
-      filePath: savePath,
-      mimeType: data.mimetype,
-      status: 'queued'
-    });
-
-    await thumbnailQueue.add('generate-thumbnail', {
-      jobId: job._id.toString(),
-      filePath: savePath,
-      mimeType: data.mimetype
-    }, {
-      jobId: job._id.toString() 
-    });
-
-    return { message: 'File uploaded', jobId: job._id };
+    return { message: 'Files uploaded', jobs: jobsCreated };
   });
 
   fastify.get('/jobs', {

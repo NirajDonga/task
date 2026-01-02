@@ -61,26 +61,33 @@ export default function Dashboard() {
   }, [router, setJobs]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
+    if (!e.target.files?.length) return; // FIX: Check for length, not just [0]
     
     setUploading(true);
     const formData = new FormData();
-    formData.append('file', e.target.files[0]);
+    
+    // FIX: Loop through all selected files and append them
+    Array.from(e.target.files).forEach((file) => {
+      formData.append('files', file); 
+    });
 
     try {
       const { data } = await api.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
-      const newJob = { 
-        _id: data.jobId, 
-        originalName: e.target.files[0].name, 
+      // FIX: Handle the array of jobs returned by the backend
+      // Backend returns: { message: '...', jobs: [{ jobId, originalName }, ...] }
+      const newJobs = data.jobs.map((job: any) => ({
+        _id: job.jobId, // Map jobId to _id
+        originalName: job.originalName, 
         status: 'queued',
         createdAt: new Date().toISOString()
-      } as any;
+      }));
       
-      setJobs(prev => [newJob, ...prev]);
+      setJobs(prev => [...newJobs, ...prev]);
     } catch (err) {
+      console.error(err);
       alert('Upload failed');
     } finally {
       setUploading(false);
@@ -110,7 +117,8 @@ export default function Dashboard() {
       <Card className="mb-8">
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center">
-            <Input type="file" onChange={handleUpload} disabled={uploading} />
+            {/* FIX: Add 'multiple' attribute to allow multi-file selection */}
+            <Input type="file" onChange={handleUpload} disabled={uploading} multiple />
             <Button disabled={uploading}>
               {uploading ? 'Uploading...' : 'Upload Video/Image'}
             </Button>

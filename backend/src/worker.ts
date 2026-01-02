@@ -1,4 +1,4 @@
-import { Worker } from 'bullmq';
+import { Worker, DelayedError } from 'bullmq';
 import IORedis from 'ioredis';
 import path from 'path';
 import fs from 'fs';
@@ -21,21 +21,29 @@ mongoose.connect(config.mongoUri)
 console.log('Worker started, listening for jobs...');
 
 const worker = new Worker('thumbnail-generation', async (job) => {
-  const { jobId, filePath, mimeType } = job.data;
-  console.log(`Processing Job ${jobId}`);
+  const { jobId, userId, filePath, mimeType } = job.data;
+  
+  const userLockKey = `lock:user:${userId}`;
+  
+  const isLocked = await connection.set(userLockKey, 'locked', 'PX', 60000, 'NX');
 
-  await Job.findByIdAndUpdate(jobId, { status: 'processing' });
+  if (!isLocked) {
+    await job.moveToDelayed(Date.now() + 2000, job.token);
+    throw new DelayedError(); 
+  }
 
   try {
+    console.log(`Processing Job ${jobId} for User ${userId}`);
+    await Job.findByIdAndUpdate(jobId, { status: 'processing' });
+
     const outputFilename = `thumb-${path.basename(filePath, path.extname(filePath))}.png`;
     const outputPath = path.join(path.dirname(filePath), outputFilename);
 
     if (mimeType.startsWith('image/')) {
       await sharp(filePath)
-        .resize(200, 200)
+        .resize(128, 128) 
         .toFile(outputPath);
     } 
- 
     else if (mimeType.startsWith('video/')) {
       await new Promise((resolve, reject) => {
         ffmpeg(filePath)
@@ -43,7 +51,7 @@ const worker = new Worker('thumbnail-generation', async (job) => {
             count: 1,
             folder: path.dirname(filePath),
             filename: outputFilename,
-            size: '200x200'
+            size: '128x128'
           })
           .on('end', resolve)
           .on('error', reject);
@@ -64,8 +72,13 @@ const worker = new Worker('thumbnail-generation', async (job) => {
     await Job.findByIdAndUpdate(jobId, { status: 'failed' });
     
     throw error;
+  } finally {
+    await connection.del(userLockKey);
   }
 
-}, { connection });
+}, { 
+  connection,
+  concurrency: 5 
+});
 
 export default worker;
