@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon --exec \"ts-node --files\" src/index.ts"
   },
   "keywords": [],
   "author": "",

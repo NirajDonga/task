@@ -1,16 +1,55 @@
 version: '3.8'
+
 services:
+  # 1. Database
   mongo:
-    image: mongo:latest
+    image: mongo
+    container_name: thumbnail-mongo
     ports:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
 
+  # 2. Queue
   redis:
-    image: redis:alpine
+    image: redis
+    container_name: thumbnail-redis
     ports:
       - "6379:6379"
+
+  # # 3. The Backend API (NEW)
+  # backend:
+  #   build: ./backend
+  #   container_name: thumbnail-api
+  #   ports:
+  #     - "3001:3001" # <--- Maps localhost:3001 to container:3001
+  #   environment:
+  #     - PORT=3001
+  #     - MONGO_URI=mongodb://mongo:27017/thumbnail-app # <--- 'mongo' is the service name
+  #     - REDIS_HOST=redis # <--- 'redis' is the service name
+  #     - REDIS_PORT=6379
+  #     - JWT_SECRET=supersecret-key
+  #   depends_on:
+  #     - mongo
+  #     - redis
+  #   volumes:
+  #     - ./uploads:/app/uploads # <--- Persist uploads outside container
+
+  # # 4. The Worker (NEW)
+  # worker:
+  #   build: ./backend
+  #   container_name: thumbnail-worker
+  #   command: npx ts-node src/worker.ts # Override default command to run worker
+  #   environment:
+  #     - MONGO_URI=mongodb://mongo:27017/thumbnail-app
+  #     - REDIS_HOST=redis
+  #     - REDIS_PORT=6379
+  #   depends_on:
+  #     - mongo
+  #     - redis
+  #     - backend
+  #   volumes:
+  #     - ./uploads:/app/uploads # <--- Share uploads folder with API
 
 volumes:
   mongo-data:
