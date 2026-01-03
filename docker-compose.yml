@@ -17,53 +17,48 @@ services:
     ports:
       - "6379:6379"
 
-#   # 3. The Backend API
-#   backend:
-#     build: ./backend
-#     container_name: thumbnail-api
-#     ports:
-#       - "3001:3001"
-#     environment:
-#       - PORT=3001
-#       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
-#       - REDIS_HOST=redis
-#       - REDIS_PORT=6379
-#       - JWT_SECRET=super_secret_key_change_me
-#     depends_on:
-#       - mongo
-#       - redis
-#     volumes:
-#       # FIX: Point to the actual uploads folder inside 'backend'
-#       - ./backend/uploads:/app/uploads
+  # 3. The Backend API
+  backend:
+    build: ./backend
+    container_name: thumbnail-api
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGO_URI=mongodb://mongo:27017/thumbnail-app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=super_secret_key_change_me
+    # Explicitly run the dev script if your Dockerfile CMD is different
+    command: npm run dev 
+    depends_on:
+      - mongo
+      - redis
+    volumes:
+      # Maps your local 'backend/uploads' to the container's '/app/uploads'
+      # This ensures files persist and are visible to the worker
+      - ./backend/uploads:/app/uploads
+      # Optional: Map source code for hot-reloading if you are developing
+      # - ./backend/src:/app/src
 
-#   # 4. The Worker
-#   worker:
-#     build: ./backend
-#     container_name: thumbnail-worker
-#     command: npx ts-node src/worker.ts
-#     environment:
-#       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
-#       - REDIS_HOST=redis
-#       - REDIS_PORT=6379
-#       - JWT_SECRET=super_secret_key_change_me
-#     depends_on:
-#       - mongo
-#       - redis
-#       - backend
-#     volumes:
-#       # FIX: Must match the backend path exactly so worker can find the files
-#       - ./backend/uploads:/app/uploads
-
-# frontend:
-#     build: ./frontend
-#     container_name: thumbnail-frontend
-#     ports:
-#       - "3000:3000"
-#     environment:
-#       # Browser needs localhost to reach backend from outside docker
-#       - NEXT_PUBLIC_API_URL=http://localhost:3001
-#     depends_on:
-#       - backend
+  # 4. The Worker
+  worker:
+    build: ./backend
+    container_name: thumbnail-worker
+    # Overrides the default command to run the worker script
+    command: npm run worker
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/thumbnail-app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=super_secret_key_change_me
+    depends_on:
+      - mongo
+      - redis
+      - backend
+    volumes:
+      # CRITICAL: Must match the backend path exactly so worker can find the files
+      - ./backend/uploads:/app/uploads
 
 volumes:
   mongo-data:

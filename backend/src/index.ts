@@ -29,6 +29,11 @@ fastify.register(fastifyStatic, {
     ? config.uploadsDir
     : path.join(process.cwd(), config.uploadsDir),
   prefix: '/uploads/',
+  setHeaders: (res, pathName) => {
+    if (pathName.includes('thumb-')) {
+       res.setHeader('Content-Disposition', 'attachment');
+    }
+  }
 });
 
 fastify.decorate("authenticate", async function (request: FastifyRequest, reply: FastifyReply) {

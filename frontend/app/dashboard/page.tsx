@@ -104,6 +104,24 @@ export default function Dashboard() {
     }
   };
 
+  const downloadThumbnail = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename; // Forces the filename
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
+  };
+
   return (
     <div className="p-10 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -159,7 +177,8 @@ export default function Dashboard() {
                         View
                       </a>
                     </Button>
-                    <Button size="sm" className="flex-1" asChild>
+                    <Button size="sm" className="flex-1" asChild 
+                    onClick={() => downloadThumbnail(thumbnailUrl, `thumb-${job.originalName}.png`)}>
                       <a href={thumbnailUrl} download>
                         Download
                       </a>
