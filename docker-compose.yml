@@ -17,39 +17,53 @@ services:
     ports:
       - "6379:6379"
 
-  # # 3. The Backend API (NEW)
-  # backend:
-  #   build: ./backend
-  #   container_name: thumbnail-api
-  #   ports:
-  #     - "3001:3001" # <--- Maps localhost:3001 to container:3001
-  #   environment:
-  #     - PORT=3001
-  #     - MONGO_URI=mongodb://mongo:27017/thumbnail-app # <--- 'mongo' is the service name
-  #     - REDIS_HOST=redis # <--- 'redis' is the service name
-  #     - REDIS_PORT=6379
-  #     - JWT_SECRET=supersecret-key
-  #   depends_on:
-  #     - mongo
-  #     - redis
-  #   volumes:
-  #     - ./uploads:/app/uploads # <--- Persist uploads outside container
+#   # 3. The Backend API
+#   backend:
+#     build: ./backend
+#     container_name: thumbnail-api
+#     ports:
+#       - "3001:3001"
+#     environment:
+#       - PORT=3001
+#       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
+#       - REDIS_HOST=redis
+#       - REDIS_PORT=6379
+#       - JWT_SECRET=super_secret_key_change_me
+#     depends_on:
+#       - mongo
+#       - redis
+#     volumes:
+#       # FIX: Point to the actual uploads folder inside 'backend'
+#       - ./backend/uploads:/app/uploads
 
-  # # 4. The Worker (NEW)
-  # worker:
-  #   build: ./backend
-  #   container_name: thumbnail-worker
-  #   command: npx ts-node src/worker.ts # Override default command to run worker
-  #   environment:
-  #     - MONGO_URI=mongodb://mongo:27017/thumbnail-app
-  #     - REDIS_HOST=redis
-  #     - REDIS_PORT=6379
-  #   depends_on:
-  #     - mongo
-  #     - redis
-  #     - backend
-  #   volumes:
-  #     - ./uploads:/app/uploads # <--- Share uploads folder with API
+#   # 4. The Worker
+#   worker:
+#     build: ./backend
+#     container_name: thumbnail-worker
+#     command: npx ts-node src/worker.ts
+#     environment:
+#       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
+#       - REDIS_HOST=redis
+#       - REDIS_PORT=6379
+#       - JWT_SECRET=super_secret_key_change_me
+#     depends_on:
+#       - mongo
+#       - redis
+#       - backend
+#     volumes:
+#       # FIX: Must match the backend path exactly so worker can find the files
+#       - ./backend/uploads:/app/uploads
+
+# frontend:
+#     build: ./frontend
+#     container_name: thumbnail-frontend
+#     ports:
+#       - "3000:3000"
+#     environment:
+#       # Browser needs localhost to reach backend from outside docker
+#       - NEXT_PUBLIC_API_URL=http://localhost:3001
+#     depends_on:
+#       - backend
 
 volumes:
   mongo-data:
