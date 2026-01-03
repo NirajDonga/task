@@ -17,12 +17,11 @@ const fastify = Fastify({ logger: true });
 
 fastify.register(multipart, {
   limits: {
-    fileSize: 100 * 1024 * 1024,
+    fileSize: 100 * 1024 * 1024, 
   }
 });
 
 fastify.register(cors, { origin: config.corsOrigin });
-
 fastify.register(jwt, { secret: config.jwtSecret });
 
 fastify.register(fastifyStatic, {
@@ -50,24 +49,6 @@ const queueEvents = new QueueEvents('thumbnail-generation', {
   }
 });
 
-fastify.ready().then(() => {
-  queueEvents.on('completed', ({ jobId, returnvalue }) => {
-    if (fastify.io) {
-      fastify.io.emit('job-completed', { 
-        jobId, 
-        status: 'completed', 
-        ...(returnvalue as any) 
-      });
-    }
-  });
-
-  queueEvents.on('failed', ({ jobId, failedReason }) => {
-    if (fastify.io) {
-      fastify.io.emit('job-failed', { jobId, status: 'failed', reason: failedReason });
-    }
-  });
-});
-
 const start = async () => {
   try {
     await connectDB();
@@ -82,10 +63,24 @@ const start = async () => {
       adapter: createAdapter(pubClient, subClient)
     });
 
+    await fastify.ready();
+
+    queueEvents.on('completed', ({ jobId, returnvalue }) => {
+      fastify.io.emit('job-completed', { 
+        jobId, 
+        status: 'completed', 
+        ...(returnvalue as any) 
+      });
+    });
+
+    queueEvents.on('failed', ({ jobId, failedReason }) => {
+      fastify.io.emit('job-failed', { jobId, status: 'failed', reason: failedReason });
+    });
 
     await fastify.listen({ port: config.port, host: '0.0.0.0' });
     console.log(`API & Socket running on http://localhost:${config.port}`);
-  } catch (err) {
+  } 
+  catch (err) {
     fastify.log.error(err);
     process.exit(1);
   }
