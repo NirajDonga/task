@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # 1. Database
   mongo:
     image: mongo
     container_name: thumbnail-mongo
@@ -10,14 +9,12 @@ services:
     volumes:
       - mongo-data:/data/db
 
-  # 2. Queue
   redis:
     image: redis
     container_name: thumbnail-redis
     ports:
       - "6379:6379"
 
-  # 3. The Backend API
   backend:
     build: ./backend
     container_name: thumbnail-api
@@ -28,36 +25,28 @@ services:
       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=super_secret_key_change_me
-    # Explicitly run the dev script if your Dockerfile CMD is different
-    command: npm run dev 
+      - JWT_SECRET=${JWT_SECRET}
+    command: npm run dev
     depends_on:
       - mongo
       - redis
     volumes:
-      # Maps your local 'backend/uploads' to the container's '/app/uploads'
-      # This ensures files persist and are visible to the worker
       - ./backend/uploads:/app/uploads
-      # Optional: Map source code for hot-reloading if you are developing
-      # - ./backend/src:/app/src
 
-  # 4. The Worker
   worker:
     build: ./backend
     container_name: thumbnail-worker
-    # Overrides the default command to run the worker script
     command: npm run worker
     environment:
       - MONGO_URI=mongodb://mongo:27017/thumbnail-app
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - JWT_SECRET=super_secret_key_change_me
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       - mongo
       - redis
       - backend
     volumes:
-      # CRITICAL: Must match the backend path exactly so worker can find the files
       - ./backend/uploads:/app/uploads
 
 volumes:
