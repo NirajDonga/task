@@ -11,6 +11,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? apiBaseUrl;
+
 export default function Dashboard() {
   const router = useRouter();
   const [jobs, setJobs] = useAtom(jobsAtom);
@@ -34,7 +37,7 @@ export default function Dashboard() {
 
     fetchJobs();
 
-    const socket = io('http://localhost:3001');
+  const socket = io(socketUrl);
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket');
@@ -61,12 +64,11 @@ export default function Dashboard() {
   }, [router, setJobs]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return; // FIX: Check for length, not just [0]
+    if (!e.target.files?.length) return; 
     
     setUploading(true);
     const formData = new FormData();
     
-    // FIX: Loop through all selected files and append them
     Array.from(e.target.files).forEach((file) => {
       formData.append('files', file); 
     });
@@ -76,10 +78,8 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       
-      // FIX: Handle the array of jobs returned by the backend
-      // Backend returns: { message: '...', jobs: [{ jobId, originalName }, ...] }
       const newJobs = data.jobs.map((job: any) => ({
-        _id: job.jobId, // Map jobId to _id
+        _id: job.jobId, 
         originalName: job.originalName, 
         status: 'queued',
         createdAt: new Date().toISOString()
@@ -126,28 +126,50 @@ export default function Dashboard() {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {jobs.map((job) => (
-          <Card key={job._id} className="overflow-hidden">
-            <div className="h-40 bg-gray-100 flex items-center justify-center relative">
-              {job.status === 'completed' ? (
-                <img 
-                  src={`http://localhost:3001${job.thumbnailUrl}`} 
-                  alt="Thumbnail" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/file.svg' }}
-                />
-              ) : (
-                <span className="text-gray-400 capitalize animate-pulse">{job.status}</span>
-              )}
-            </div>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <p className="font-medium truncate pr-2" title={job.originalName}>{job.originalName}</p>
-                <Badge variant={getStatusColor(job.status) as any}>{job.status}</Badge>
+        {jobs.map((job) => {
+          const thumbnailUrl = `${apiBaseUrl}${job.thumbnailUrl}`;
+          
+          return (
+            <Card key={job._id} className="overflow-hidden flex flex-col">
+              <div className="h-40 bg-gray-100 flex items-center justify-center relative">
+                {job.status === 'completed' ? (
+                  <img 
+                    src={thumbnailUrl} 
+                    alt="Thumbnail" 
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/file.svg' }}
+                  />
+                ) : (
+                  <span className="text-gray-400 capitalize animate-pulse">{job.status}</span>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              
+              <CardContent className="p-4 flex flex-col flex-1">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="font-medium truncate pr-2 flex-1" title={job.originalName}>
+                    {job.originalName}
+                  </p>
+                  <Badge variant={getStatusColor(job.status) as any}>{job.status}</Badge>
+                </div>
+
+                {job.status === 'completed' && (
+                  <div className="flex gap-2 mt-auto pt-2">
+                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                      <a href={thumbnailUrl} target="_blank" rel="noopener noreferrer">
+                        View
+                      </a>
+                    </Button>
+                    <Button size="sm" className="flex-1" asChild>
+                      <a href={thumbnailUrl} download>
+                        Download
+                      </a>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

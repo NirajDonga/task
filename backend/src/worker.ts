@@ -60,10 +60,25 @@ const worker = new Worker('thumbnail-generation', async (job) => {
         .toFile(outputPath);
     } 
     else if (mimeType.startsWith('video/')) {
+      // 1. Probe the video to get its duration
+      const metadata = await new Promise<any>((resolve, reject) => {
+        ffmpeg.ffprobe(filePath, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+      });
+
+      const duration = metadata.format.duration || 0;
+      const midPoint = duration / 2; // Calculate the mid-point timestamp
+
+      console.log(`Video duration: ${duration}s, taking screenshot at: ${midPoint}s`);
+
+      // 2. Take screenshot at the calculated mid-point
       await new Promise((resolve, reject) => {
         ffmpeg(filePath)
           .screenshots({
             count: 1,
+            timemarks: [midPoint], // <--- Explicitly set the timestamp
             folder: path.dirname(filePath),
             filename: outputFilename,
             size: '128x128'
