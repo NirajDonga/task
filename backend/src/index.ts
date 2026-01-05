@@ -59,6 +59,13 @@ const queueEvents = new QueueEvents('thumbnail-generation', {
   }
 });
 
+const conversionQueueEvents = new QueueEvents('media-conversion', {
+  connection: { 
+    host: config.redis.host,
+    port: config.redis.port,
+  }
+});
+
 const start = async () => {
   try {
     await connectDB();
@@ -84,6 +91,18 @@ const start = async () => {
     });
 
     queueEvents.on('failed', ({ jobId, failedReason }) => {
+      fastify.io.emit('job-failed', { jobId, status: 'failed', reason: failedReason });
+    });
+
+    conversionQueueEvents.on('completed', ({ jobId, returnvalue }) => {
+      fastify.io.emit('job-completed', { 
+        jobId, 
+        status: 'completed', 
+        ...(returnvalue as any) 
+      });
+    });
+
+    conversionQueueEvents.on('failed', ({ jobId, failedReason }) => {
       fastify.io.emit('job-failed', { jobId, status: 'failed', reason: failedReason });
     });
 
