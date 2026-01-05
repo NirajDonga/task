@@ -31,6 +31,8 @@ services:
       - mongo
       - redis
     volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
       - ./backend/uploads:/app/uploads
 
   worker:
@@ -47,7 +49,10 @@ services:
       - redis
       - backend
     volumes:
+      - ./backend:/app
+      - backend-node-modules:/app/node_modules
       - ./backend/uploads:/app/uploads
 
 volumes:
   mongo-data:
+  backend-node-modules:

@@ -15,24 +15,22 @@ export async function uploadRoutes(fastify: FastifyInstance) {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
+  // Route 1: Thumbnail Upload
   fastify.post('/upload', {
     preValidation: [fastify.authenticate] 
   }, async (request, reply) => {
     
     const parts = request.parts();
-    
     const jobsCreated = [];
     let hasFiles = false;
 
     for await (const part of parts) {
       if (part.type === 'file') {
         hasFiles = true;
-
         const filename = `${Date.now()}-${Math.round(Math.random() * 1000)}-${part.filename}`;
         const savePath = path.join(uploadDir, filename);
   
         await pump(part.file, fs.createWriteStream(savePath));
-
         const userId = request.user.id;
 
         const job = await Job.create({
@@ -53,22 +51,15 @@ export async function uploadRoutes(fastify: FastifyInstance) {
           jobId: job._id.toString() 
         });
 
-        jobsCreated.push({ 
-          jobId: job._id, 
-          originalName: part.filename 
-        });
-      } else {
-        console.log(`Skipping non-file field: ${part.fieldname}`);
+        jobsCreated.push({ jobId: job._id, originalName: part.filename });
       }
     }
 
-    if (!hasFiles) {
-      return reply.code(400).send({ message: 'No files uploaded' });
-    }
-
+    if (!hasFiles) return reply.code(400).send({ message: 'No files uploaded' });
     return { message: 'Files uploaded', jobs: jobsCreated };
   });
 
+  // Route 2: Get Jobs
   fastify.get('/jobs', {
     preValidation: [fastify.authenticate]
   }, async (request) => {
@@ -77,6 +68,7 @@ export async function uploadRoutes(fastify: FastifyInstance) {
     return jobs;
   });
 
+  // Route 3: Media Conversion (POST) - This handles the actual upload
   fastify.post('/convert', {
     preValidation: [fastify.authenticate] 
   }, async (request, reply) => {
@@ -102,7 +94,6 @@ export async function uploadRoutes(fastify: FastifyInstance) {
           status: 'queued'
         });
 
-        // Add to Conversion Queue
         await conversionQueue.add('convert-media', {
           jobId: job._id.toString(),
           userId: userId.toString(),
@@ -116,5 +107,11 @@ export async function uploadRoutes(fastify: FastifyInstance) {
 
     if (!hasFiles) return reply.code(400).send({ message: 'No files uploaded' });
     return { message: 'Conversion started', jobs: jobsCreated };  
+  });
+
+  // Route 4: Media Conversion Check (GET) - NEW! 
+  // This fixes the "Route not found" error if you visit the link in the browser.
+  fastify.get('/convert', async (request, reply) => {
+    return { message: "Converter API is running. Use POST to upload files." };
   });
 }

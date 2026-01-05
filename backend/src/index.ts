@@ -13,7 +13,10 @@ import { uploadRoutes } from './routes/upload';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient } from 'redis';
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({
+  logger: true,
+  ignoreTrailingSlash: true,
+});
 
 fastify.register(multipart, {
   limits: {
