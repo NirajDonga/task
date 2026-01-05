@@ -9,3 +9,5 @@ const connection = new IORedis({
 });
 
 export const thumbnailQueue = new Queue('thumbnail-generation', { connection });
+
+export const conversionQueue = new Queue('media-conversion', { connection });

@@ -22,6 +22,8 @@ export default function Dashboard() {
   const fetchJobs = async () => {
     try {
       const { data } = await api.get('/jobs');
+      // Optional: Filter to show only thumbnail jobs if you want strict separation
+      // setJobs(data.filter((j: any) => j.type === 'thumbnail' || !j.type)); 
       setJobs(data);
     } catch (err) {
       console.error('Failed to fetch jobs');
@@ -37,7 +39,7 @@ export default function Dashboard() {
 
     fetchJobs();
 
-  const socket = io(socketUrl);
+    const socket = io(socketUrl);
 
     socket.on('connect', () => {
       console.log('Connected to WebSocket');
@@ -82,6 +84,8 @@ export default function Dashboard() {
         _id: job.jobId, 
         originalName: job.originalName, 
         status: 'queued',
+        // Defaulting to thumbnail since this is the dashboard
+        type: 'thumbnail', 
         createdAt: new Date().toISOString()
       }));
       
@@ -112,7 +116,7 @@ export default function Dashboard() {
       
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = filename; // Forces the filename
+      link.download = filename; 
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -126,10 +130,17 @@ export default function Dashboard() {
     <div className="p-10 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Thumbnail Generator</h1>
-        <Button variant="outline" onClick={() => {
-          localStorage.removeItem('token');
-          router.push('/login');
-        }}>Logout</Button>
+        
+        {/* Navigation Buttons */}
+        <div className="flex gap-3">
+            <Button onClick={() => router.push('/converter')} variant="secondary">
+                Go to Converter
+            </Button>
+            <Button variant="outline" onClick={() => {
+            localStorage.removeItem('token');
+            router.push('/login');
+            }}>Logout</Button>
+        </div>
       </div>
 
       <Card className="mb-8">

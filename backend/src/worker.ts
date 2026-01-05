@@ -1,7 +1,6 @@
 import { Worker, DelayedError } from 'bullmq';
 import IORedis from 'ioredis';
 import path from 'path';
-import fs from 'fs';
 import sharp from 'sharp';
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static"; 
@@ -10,6 +9,7 @@ import { path as ffprobePath } from "ffprobe-static";
 import { Job } from './models/Job';
 import mongoose from 'mongoose';
 import { config } from './config';
+// import { thumbnailQueue, conversionQueue } from './queue';
 
 if (ffmpegPath) {
   ffmpeg.setFfmpegPath(ffmpegPath as any);
@@ -35,7 +35,7 @@ mongoose.connect(config.mongoUri)
 
 console.log('Worker started, listening for jobs...');
 
-const worker = new Worker('thumbnail-generation', async (job) => {
+const thumbnailWorker = new Worker('thumbnail-generation', async (job) => {
   const { jobId, userId, filePath, mimeType } = job.data;
   
   const userLockKey = `lock:user:${userId}`;
@@ -109,4 +109,61 @@ const worker = new Worker('thumbnail-generation', async (job) => {
   concurrency: 5 
 });
 
-export default worker;
+const conversionWorker = new Worker('media-conversion', async (job) => {
+  const { jobId, userId, filePath, mimeType } = job.data;
+  const userLockKey = `lock:user:${userId}`;
+  
+  const isLocked = await connection.set(userLockKey, 'locked', 'PX', 60000, 'NX');
+  if (!isLocked) {
+    await job.moveToDelayed(Date.now() + 2000, job.token);
+    throw new DelayedError(); 
+  }
+
+  try {
+    console.log(`Processing Conversion Job ${jobId}`);
+    await Job.findByIdAndUpdate(jobId, { status: 'processing' });
+
+    const isImage = mimeType.startsWith('image/');
+    const ext = isImage ? 'webp' : 'webm';
+    const outputFilename = `converted-${path.basename(filePath, path.extname(filePath))}.${ext}`;
+    const outputPath = path.join(path.dirname(filePath), outputFilename);
+
+    if (isImage) {
+      // Convert Image to WebP
+      await sharp(filePath)
+        .toFormat('webp')
+        .toFile(outputPath);
+    } 
+    else if (mimeType.startsWith('video/')) {
+      // Convert Video to WebM
+      await new Promise((resolve, reject) => {
+        ffmpeg(filePath)
+          .output(outputPath)
+          .format('webm')
+          .videoCodec('libvpx-vp9') 
+          .audioCodec('libopus')
+          .on('end', resolve)
+          .on('error', reject)
+          .run();
+      });
+    }
+
+    const fileUrl = `/uploads/${outputFilename}`;
+
+    await Job.findByIdAndUpdate(jobId, { 
+      status: 'completed', 
+      convertedUrl: fileUrl 
+    });
+    
+    return { convertedUrl: fileUrl, jobId };
+
+  } catch (error) {
+    console.error(`Conversion Job ${jobId} Failed:`, error);
+    await Job.findByIdAndUpdate(jobId, { status: 'failed' });
+    throw error;
+  } finally {
+    await connection.del(userLockKey);
+  }
+}, { connection, concurrency: 2 });
+
+export default { thumbnailWorker, conversionWorker };

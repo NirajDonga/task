@@ -30,7 +30,7 @@ fastify.register(fastifyStatic, {
     : path.join(process.cwd(), config.uploadsDir),
   prefix: '/uploads/',
   setHeaders: (res, pathName) => {
-    if (pathName.includes('thumb-')) {
+    if (pathName.includes('thumb-') || pathName.includes('converted-')) {
        res.setHeader('Content-Disposition', 'attachment');
     }
   }

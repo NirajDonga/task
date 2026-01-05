@@ -18,9 +18,17 @@ const JobSchema = new mongoose.Schema({
         type: String, 
         required: true 
     },
+    
     thumbnailUrl: { 
         type: String 
     }, 
+
+    type: { 
+        type: String, 
+        enum: ['thumbnail', 'conversion'], 
+        default: 'thumbnail' 
+    },
+    convertedUrl: { type: String },
     status: { 
         type: String, 
         enum: ['queued', 'processing', 'completed', 'failed'], 
