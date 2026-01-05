@@ -22,9 +22,8 @@ export default function Dashboard() {
   const fetchJobs = async () => {
     try {
       const { data } = await api.get('/jobs');
-      // Optional: Filter to show only thumbnail jobs if you want strict separation
-      // setJobs(data.filter((j: any) => j.type === 'thumbnail' || !j.type)); 
-      setJobs(data);
+      // Filter to show only thumbnail jobs or jobs with no type
+      setJobs(data.filter((j: any) => j.type === 'thumbnail' || !j.type)); 
     } catch (err) {
       console.error('Failed to fetch jobs');
     }
@@ -84,7 +83,6 @@ export default function Dashboard() {
         _id: job.jobId, 
         originalName: job.originalName, 
         status: 'queued',
-        // Defaulting to thumbnail since this is the dashboard
         type: 'thumbnail', 
         createdAt: new Date().toISOString()
       }));

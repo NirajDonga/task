@@ -12,6 +12,9 @@ import { Badge } from '@/components/ui/badge';
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? apiBaseUrl;
 
+// Placeholder for when content is loading or if there's an error
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f3f4f6'/%3E%3Ctext x='50' y='50' font-family='Arial' font-size='14' fill='%239ca3af' text-anchor='middle' dy='.3em'%3ENo Preview%3C/text%3E%3C/svg%3E";
+
 interface Job {
   _id: string;
   originalName: string;
@@ -29,7 +32,6 @@ export default function ConverterPage() {
   const fetchJobs = async () => {
     try {
       const { data } = await api.get('/jobs');
-      // Filter to show only CONVERSION jobs
       setJobs(data.filter((j: Job) => j.type === 'conversion'));
     } catch (err) {
       console.error('Failed to fetch jobs');
@@ -90,6 +92,15 @@ export default function ConverterPage() {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'default';
+      case 'processing': return 'secondary';
+      case 'failed': return 'destructive';
+      default: return 'outline';
+    }
+  };
+
   const downloadFile = async (url: string, filename: string) => {
     try {
       const response = await fetch(url);
@@ -112,7 +123,6 @@ export default function ConverterPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Media Converter</h1>
         
-        {/* Navigation Buttons */}
         <div className="flex gap-3">
             <Button onClick={() => router.push('/dashboard')} variant="secondary">
                 Back to Dashboard
@@ -135,32 +145,60 @@ export default function ConverterPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {jobs.map((job) => {
-          const fileUrl = job.convertedUrl ? `${apiBaseUrl}${job.convertedUrl}` : '';
+          const fileUrl = job.convertedUrl ? `${apiBaseUrl}${job.convertedUrl}` : null;
           
           return (
-            <Card key={job._id} className="p-4 flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="font-medium">{job.originalName}</span>
-                <span className="text-sm text-gray-500">
-                    Status: <Badge variant={job.status === 'completed' ? 'default' : 'secondary'}>{job.status}</Badge>
-                </span>
+            <Card key={job._id} className="overflow-hidden flex flex-col">
+              <div className="h-40 bg-gray-100 flex items-center justify-center relative">
+                {job.status === 'completed' && fileUrl ? (
+                  // Check if the output file is a video (WebM) or image (WebP)
+                  fileUrl.endsWith('.webm') ? (
+                     <video 
+                       src={fileUrl} 
+                       className="w-full h-full object-cover" 
+                       controls 
+                     />
+                  ) : (
+                    <img 
+                      src={fileUrl} 
+                      alt="Converted Preview" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { 
+                        const target = e.target as HTMLImageElement;
+                        target.onerror = null; 
+                        target.src = PLACEHOLDER_IMAGE;
+                      }}
+                    />
+                  )
+                ) : (
+                  <span className="text-gray-400 capitalize animate-pulse">{job.status}</span>
+                )}
               </div>
 
-              {job.status === 'completed' && fileUrl && (
-                <div className="flex gap-2">
-                   <Button variant="outline" size="sm" asChild>
-                      <a href={fileUrl} target="_blank" rel="noopener noreferrer">View</a>
-                   </Button>
-                   <Button size="sm" onClick={() => {
-                       const ext = job.originalName.match(/\.(png|jpg|jpeg)$/i) ? 'webp' : 'webm';
-                       downloadFile(fileUrl, `converted-${job.originalName.split('.')[0]}.${ext}`)
-                   }}>
-                      Download
-                   </Button>
+              <CardContent className="p-4 flex flex-col flex-1">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="font-medium truncate pr-2 flex-1" title={job.originalName}>
+                    {job.originalName}
+                  </p>
+                  <Badge variant={getStatusColor(job.status) as any}>{job.status}</Badge>
                 </div>
-              )}
+
+                {job.status === 'completed' && fileUrl && (
+                  <div className="flex gap-2 mt-auto pt-2">
+                     <Button variant="outline" size="sm" className="flex-1" asChild>
+                        <a href={fileUrl} target="_blank" rel="noopener noreferrer">View</a>
+                     </Button>
+                     <Button size="sm" className="flex-1" onClick={() => {
+                         const ext = job.originalName.match(/\.(png|jpg|jpeg)$/i) ? 'webp' : 'webm';
+                         downloadFile(fileUrl, `converted-${job.originalName.split('.')[0]}.${ext}`)
+                     }}>
+                        Download
+                     </Button>
+                  </div>
+                )}
+              </CardContent>
             </Card>
           );
         })}

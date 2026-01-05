@@ -33,8 +33,10 @@ fastify.register(fastifyStatic, {
     : path.join(process.cwd(), config.uploadsDir),
   prefix: '/uploads/',
   setHeaders: (res, pathName) => {
+    // CHANGED: 'attachment' -> 'inline'
+    // This allows the browser to display the media instead of auto-downloading it.
     if (pathName.includes('thumb-') || pathName.includes('converted-')) {
-       res.setHeader('Content-Disposition', 'attachment');
+       res.setHeader('Content-Disposition', 'inline');
     }
   }
 });
